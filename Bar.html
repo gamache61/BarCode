@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        video { width: 80%; max-width: 600px; }
+        #result, #total { font-size: 1.2em; margin: 10px; }
+        #cart { list-style: none; padding: 0; }
+        #cart li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Shopping Barcode Scanner</h1>
+    <div id="scanner-container">
+        <video id="scanner"></video>
+    </div>
+    <input type="number" id="tax-rate" placeholder="Enter tax rate (%)" step="0.01" min="0">
+    <button onclick="startScanner()">Start Scanner</button>
+    <div id="result">Scan a barcode...</div>
+    <ul id="cart"></ul>
+    <div id="total">Total: $0.00</div>
+
+    <script>
+        const items = {
+            '123456789012': { name: 'Item 1', price: 10.00 },
+            '987654321098': { name: 'Item 2', price: 15.50 },
+            // Add more items here
+        };
+        let cart = [];
+        let taxRate = 0;
+
+        document.getElementById('tax-rate').addEventListener('input', (e) => {
+            taxRate = parseFloat(e.target.value) / 100 || 0;
+            updateTotal();
+        });
+
+        function startScanner() {
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#scanner') },
+                decoder: { readers: ["upc_reader", "ean_reader"] }
+            }, (err) => {
+                if (err) { console.error(err); return; }
+                Quagga.start();
+            });
+
+            Quagga.onDetected((data) => {
+                const code = data.codeResult.code;
+                document.getElementById('result').textContent = `Scanned: ${code}`;
+                addToCart(code);
+                Quagga.stop();
+                setTimeout(startScanner, 1000); // Restart after scan
+            });
+        }
+
+        function addToCart(code) {
+            const item = items[code];
+            if (item) {
+                cart.push(item);
+                const li = document.createElement('li');
+                li.textContent = `${item.name} - $${item.price.toFixed(2)}`;
+                document.getElementById('cart').appendChild(li);
+                updateTotal();
+            } else {
+                alert('Item not found!');
+            }
+        }
+
+        function updateTotal() {
+            const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
+            const tax = subtotal * taxRate;
+            const total = subtotal + tax;
+            document.getElementById('total').textContent = `Total: $${total.toFixed(2)} (Subtotal: $${subtotal.toFixed(2)}, Tax: $${tax.toFixed(2)})`;
+        }
+    </script>
+</body>
+</html>
